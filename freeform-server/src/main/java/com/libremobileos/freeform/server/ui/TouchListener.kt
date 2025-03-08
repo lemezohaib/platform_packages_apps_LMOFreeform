@@ -86,26 +86,29 @@ class RightViewClickListener(private val displayId: Int) : View.OnClickListener 
 class ScaleTouchListener(private val window: FreeformWindow, private val isRight: Boolean = true): View.OnTouchListener {
     private var startX = 0.0f
     private var startY = 0.0f
+    private var aspectRatio = 1.0f
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouch(v: View, event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 startX = event.rawX
                 startY = event.rawY
+                aspectRatio = window.freeformRootView.width.toFloat() / window.freeformRootView.height.toFloat()
                 window.freeformRootView.visibility = View.INVISIBLE
                 window.veilView.visibility = View.VISIBLE
             }
             MotionEvent.ACTION_MOVE -> {
+                val xDelta = if (isRight) (event.rawX - startX) else (startX - event.rawX)
+
+                val newWidth = max(25, (window.freeformRootView.width + xDelta).roundToInt())
+                val newHeight = max(25, (newWidth / aspectRatio).roundToInt())
+
                 window.freeformRootView.layoutParams = window.freeformRootView.layoutParams.apply {
-                    val xDelta = if (isRight) (event.rawX - startX) else (startX - event.rawX)
-                    val yDelta = event.rawY - startY
-                    width = max(25, (window.freeformRootView.width + xDelta).roundToInt())
-                    height = max(25, (window.freeformRootView.height + yDelta).roundToInt())
-                    if (width > height) {
-                        if (xDelta < 0) width = height
-                        else height = width
-                    }
+                    width = newWidth
+                    height = newHeight
                 }
+
                 startX = event.rawX
                 startY = event.rawY
             }
@@ -121,7 +124,10 @@ class ScaleTouchListener(private val window: FreeformWindow, private val isRight
                         window.freeformConfig.freeformHeight,
                         window.freeformConfig.densityDpi
                     )
-                    window.freeformView.surfaceTexture!!.setDefaultBufferSize(window.freeformConfig.freeformWidth, window.freeformConfig.freeformHeight)
+                    window.freeformView.surfaceTexture!!.setDefaultBufferSize(
+                        window.freeformConfig.freeformWidth,
+                        window.freeformConfig.freeformHeight
+                    )
                     // Delay the unveiling until after the scaling is complete
                     window.handler.postDelayed({
                         window.freeformRootView.visibility = View.VISIBLE
