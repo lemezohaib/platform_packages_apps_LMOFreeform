@@ -2,6 +2,8 @@ package com.libremobileos.freeform.server.ui
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.graphics.PixelFormat
 import android.graphics.SurfaceTexture
@@ -60,6 +62,7 @@ class FreeformWindow(
     
     private lateinit var appPackageName: String
     private var appIcon: Drawable? = null
+    private var appOrientation: Int = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
     private val rotationWatcher = object : IRotationWatcher.Stub() {
         override fun onRotationChanged(rotation: Int) {
@@ -264,6 +267,15 @@ class FreeformWindow(
             } else {
                 // preserving the aspect ratio
                 defaultDisplayHeight * defaultDisplayHeight / defaultDisplayWidth
+            }
+            if (appOrientation == ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE) {
+                if (isPortrait) {
+                    width = (defaultDisplayWidth * 0.7).roundToInt()
+                    height = width * defaultDisplayWidth / defaultDisplayHeight
+                } else {
+                    height = (defaultDisplayHeight * 0.4).roundToInt()
+                    width = height * defaultDisplayWidth / defaultDisplayHeight
+                }
             }
             dlog(TAG, "measureSize: isPortrait=$isPortrait width=$width height=$height")
         }
@@ -482,6 +494,10 @@ class FreeformWindow(
             val ai = pm.getApplicationInfo(appConfig.packageName, 0)
             appPackageName = pm.getApplicationLabel(ai).toString()
             appIcon = pm.getApplicationIcon(ai)
+            val pi = pm.getLaunchIntentForPackage(appConfig.packageName)?.component?.let {
+                pm.getActivityInfo(it, PackageManager.GET_META_DATA)
+            }
+            appOrientation = pi?.screenOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         } catch (e: Exception) {
             Slog.e(TAG, "Failed to retrieve app info: ${e.message}")
             appPackageName = ""
